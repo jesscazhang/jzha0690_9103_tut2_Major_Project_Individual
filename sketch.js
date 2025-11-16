@@ -28,10 +28,18 @@ const stemHeight = 680;
 
 // Variables for sound
 let floatSound;
+let gravitySound;
+let releaseSound;
 
-// load in sound effect
+// Load in sound effects
+// References:
+// Glitter: https://www.youtube.com/watch?v=IZWL2gALgvM
+// Thud: https://www.youtube.com/watch?v=dz6Lp_PyX_Q
+// Pop: https://www.youtube.com/watch?v=QvghQOO3K-I
 function preload() {
   floatSound = loadSound('assets/Glitter.mp3');
+  gravitySound = loadSound('assets/Thud.mp3');
+  releaseSound = loadSound('assets/Pop.mp3');
 }
 
 function setup() {
@@ -311,6 +319,10 @@ function mouseDragged() {
 }
 
 function mouseReleased() {
+  // Pop sound when mouse is released
+  if (draggingMushroom) {
+    if (releaseSound) releaseSound.play(0, 1, 1, 0.5, 1);
+  }
   draggingMushroom = null;
 }
 
@@ -321,6 +333,8 @@ function keyPressed() {
     gravityOn = !gravityOn;
     if (gravityOn) {
       floatOn = false;
+      // Speed up 1.5 / begin at 1 sec
+      gravitySound.play(0, 1, 1, 0);
     } else {
       // Reset velocity so they stop moving
       for (let m of mushrooms) m.speedY = 0;
