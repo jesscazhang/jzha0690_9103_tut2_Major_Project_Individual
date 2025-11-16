@@ -26,6 +26,14 @@ const capWidth = 880;
 const capHeight = 360;
 const stemHeight = 680;
 
+// Variables for sound
+let floatSound;
+
+// load in sound effect
+function preload() {
+  floatSound = loadSound('assets/Glitter.mp3');
+}
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
 
@@ -322,8 +330,10 @@ function keyPressed() {
   // To toggle floating when the up arrow is pressed
   if (keyCode === UP_ARROW) {
     floatOn = !floatOn;
-    if (floatUpOn) {
+    if (floatOn) {
       gravityOn = false;
+      // Speed up 1.5 / begin at 1 sec
+      floatSound.play(0, 1.5, 1, 1);
     } else {
       // Reset velocity so they stop moving
       for (let m of mushrooms) m.speedY = 0;
