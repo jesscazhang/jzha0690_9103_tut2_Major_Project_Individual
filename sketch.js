@@ -1,7 +1,7 @@
 // Global variables
 let maxWidth, maxHeight;
 // let mushroomX, mushroomY;
-let mushrooms = [];
+let bigMushroom = [];
 let smallMushrooms = [];
 
 // Graphics buffer for the background
@@ -18,6 +18,9 @@ let offsetXDrag = 0, offsetYDrag = 0;
 // Gravity flag
 let gravityOn = false;
 
+// Float flag
+let floatOn = false;
+
 // Large mushroom dimensions (for drawing and hit-test detection)
 const capWidth = 880;
 const capHeight = 360;
@@ -31,7 +34,7 @@ function setup() {
 
   // Start with the large mushroom already on screen
   // Store the mushroom positions in the design space
-  mushrooms.push({
+  bigMushroom.push({
     x: DESIGN_W / 2.7,
     y: DESIGN_H / 1.2,
     scale: 0.7,
@@ -89,7 +92,7 @@ function draw() {
   scale(s);
 
   // 2.1 Large mushroom
-  for (let m of mushrooms) { 
+  for (let m of bigMushroom) { 
     push();
     translate(m.x, m.y);
     // Size scales with the screen
@@ -121,13 +124,14 @@ function draw() {
   }
   pop();
 
-  // Toggle gravity
+  // Gravity logic
+  // Mushrooms will drop to the bottom if toggled
 
   if (gravityOn && !draggingMushroom) {
     const gravity = 0.5; // acceleration per frame
 
     // Big mushrooms
-    for (let m of mushrooms) {
+    for (let m of bigMushroom) {
       m.speedY += gravity;
       m.y += m.speedY;
 
@@ -158,6 +162,39 @@ function draw() {
       }
     }
   }
+
+  // Float logic
+  // Mushrooms will float to the top if toggled
+
+  if (floatOn && !draggingMushroom) {
+  const lift = 0.2; // upward acceleration per frame
+
+  // Big mushroom
+  for (let m of bigMushroom) {
+    // Accelerate up
+    m.speedY -= lift;
+    m.y += m.speedY;
+
+    // Top of window
+    const topY = 500;
+    if (m.y < topY) {
+      m.y = topY;
+      m.speedY = 0;
+    }
+  }
+
+  // Small mushrooms
+  for (let m of smallMushrooms) {
+    m.speedY -= lift;
+    m.anchor.y += m.speedY;
+
+    const topY = 0;
+    if (m.anchor.y < topY) {
+      m.anchor.y = topY;
+      m.speedY = 0;
+    }
+  }
+}
 }
 
 // User input functions
@@ -188,7 +225,7 @@ function mousePressed() {
   const my = (mouseY - offsetY) / s;
 
   // Hit-test if the click is in the large mushroom
-  for (let m of mushrooms) {
+  for (let m of bigMushroom) {
     const scale = m.scale;
 
     // Stem rectangle bounds
@@ -269,10 +306,29 @@ function mouseReleased() {
   draggingMushroom = null;
 }
 
-// Function to toggle gravity if 'g' or 'G' is pressed
+// Function for user input when specific keys are pressed
 function keyPressed() {
+  // To toggle gravity if 'g' or 'G' is pressed
   if (key === 'g' || key === 'G') {
     gravityOn = !gravityOn;
+    if (gravityOn) {
+      floatOn = false;
+    } else {
+      // Reset velocity so they stop moving
+      for (let m of mushrooms) m.speedY = 0;
+      for (let m of smallMushrooms) m.speedY = 0;
+    }
+  }
+  // To toggle floating when the up arrow is pressed
+  if (keyCode === UP_ARROW) {
+    floatOn = !floatOn;
+    if (floatUpOn) {
+      gravityOn = false;
+    } else {
+      // Reset velocity so they stop moving
+      for (let m of mushrooms) m.speedY = 0;
+      for (let m of smallMushrooms) m.speedY = 0;
+    }
   }
 }
 
