@@ -1,38 +1,60 @@
 // Global variables
 let maxWidth, maxHeight;
+// let mushroomX, mushroomY;
 let mushrooms = [];
+let smallMushrooms = [];
+
+// Graphics buffer for the background
+let bg;
 
 // Defining the initial canvas size and width
 const DESIGN_W = 1200;
 const DESIGN_H = 1000; 
 
-// Graphics buffer for the background
-let bg;
+// Variables for user input
+let draggingMushroom = null;
+let offsetXDrag = 0, offsetYDrag = 0;
+
+// Large mushroom dimensions (for drawing and hit-test detection)
+const capWidth = 880;
+const capHeight = 360;
+const stemHeight = 680;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  pixelDensity(2);
-  colorMode(HSB, 360, 100, 100, 100);
-  noLoop();
 
+  // Draw background once so the canvas isn't empty
   buildBackground();
 
-  mushrooms = [];
+  // Start with the large mushroom already on screen
+  // Store the mushroom positions in the design space
+  mushrooms.push({
+    x: DESIGN_W / 2.7,
+    y: DESIGN_H / 1.2,
+    scale: 0.7,
+    rot: -7
+  });
+
+  // Build small mushrooms directly from SCENE_LAYOUT
+  pixelDensity(2);
+  colorMode(HSB, 360, 100, 100, 100);
+  smallMushrooms = [];
   for (const layout of SCENE_LAYOUT) {
     const m = makeMushroomFromLayout(layout);
-    if (m) mushrooms.push(m);
+    if (m) smallMushrooms.push(m);
   }
 }
 
 function draw() {
   
   // 0. Show background buffer
-  image(bg, 0, 0, width, height);
+  image(bg, 0, 0);
 
   // 1. Scaling the mushrooms
   const sx = width  / DESIGN_W;
   const sy = height / DESIGN_H;
-  const s  = min(sx, sy);  // Proportional scaling
+  // Proportional scaling
+  const s  = min(sx, sy); 
 
   // Centering the design
   const offsetX = (width  - DESIGN_W * s) / 2;
@@ -44,21 +66,149 @@ function draw() {
   scale(s);
 
   // 2.1 Large mushroom
-  push();
-  translate(DESIGN_W * 0.35, DESIGN_H * 0.75);
-  rotate(radians(-7));
-  scale(0.7);
-  drawStemUniform();
-  drawCapReplica(0, -650, 880, 360);
-  pop();
+  for (let m of mushrooms) { 
+    push();
+    translate(m.x * s, m.y * s);
+    // Size scales with the screen
+    scale(m.scale * s);
+    rotate(radians(m.rot));                            
+    // Draw stem
+    drawStemUniform();
+    // Draw mushroom top (cx, cy, W, H)                
+    drawCapReplica(0, -650, capWidth, capHeight);
 
-  // 2.2 Small mushrooms
-  for (const m of mushrooms) {
-    m.draw();
+    // // --- Debug rectangles ---
+    // rectMode(CENTER);
+    // noFill();
+
+    // // Stem rectangle (red)
+    // stroke(255, 0, 0);
+    // rect(0, -stemHeight * 0.5, capWidth*0.3, stemHeight);
+
+    // // Cap rectangle (green)
+    // stroke(0, 255, 0);
+    // rect(0, -750, capWidth, capHeight/1.5);
+
+    pop();
   }
 
+  // 2.2 Small mushrooms
+  for (const m of smallMushrooms) {
+    m.draw();
+  }
   pop();
 }
+
+// User input functions
+
+// Function to create responsive design
+function windowResized () {
+  maxHeight = windowHeight;
+  maxWidth = windowWidth;
+  resizeCanvas(windowWidth, windowHeight);
+  
+  // Rebuilding the background for responsive design
+  buildBackground();
+
+  redraw();
+}
+
+// Mouse dragging user input logic (mousePressed, mouseDragged, mouseReleased)
+
+function mousePressed() {
+  const sx = width / DESIGN_W;
+  const sy = height / DESIGN_H;
+  const s = min(sx, sy);
+  const offsetX = (width - DESIGN_W * s) / 2;
+  const offsetY = (height - DESIGN_H * s) / 2;
+
+  // Convert mouse coords into design space
+  const mx = (mouseX - offsetX) / s;
+  const my = (mouseY - offsetY) / s;
+
+  // Hit-test if the click is in the large mushroom
+  for (let m of mushrooms) {
+    const scale = m.scale;
+
+    // Stem rectangle bounds
+    const stemCx = m.x;
+    const stemCy = m.y - (stemHeight * 0.5) * scale;
+    const stemW  = capWidth * 0.3 * scale;
+    const stemH  = stemHeight * scale;
+
+    const inStem = (mx >= stemCx - stemW/2 && mx <= stemCx + stemW/2 &&
+                    my >= stemCy - stemH/2 && my <= stemCy + stemH/2);
+
+    // Cap rectangle bounds
+    const capCx = m.x * scale;
+    const capCy = m.y - 750 * scale;
+    const capW  = capWidth * scale;
+    const capH  = (capHeight/1.5) * scale;
+
+    const inCap = (mx >= capCx - capW/2 && mx <= capCx + capW/2 &&
+                  my >= capCy - capH/2 && my <= capCy + capH/2);
+
+    if (inStem || inCap) {
+      draggingMushroom = m;
+      offsetXDrag = mx - m.x;
+      offsetYDrag = my - m.y;
+      return;
+    }
+  }
+
+  // Hit-test if the click is in the small mushrooms
+  for (let m of smallMushrooms) {
+    const scale = m.pose.scale || 1;
+
+    // shrink factor (e.g. 0.5 = half size)
+    const shrink = 0.5;
+
+    // get capWidth, capHeight, and stemHeight from the TYPE_LIBRARY of each specific small mushroom
+    const left   = m.anchor.x - (capWidth/2) * scale * shrink;
+    const right  = m.anchor.x + (capWidth/2) * scale * shrink;
+    //const top    = m.anchor.y - (stemHeight + capHeight) * scale * shrink;
+    const top    = m.anchor.y - (capHeight) * scale * shrink;
+
+    const bottom = m.anchor.y;
+
+    if (mx >= left && mx <= right && my >= top && my <= bottom) {
+      draggingMushroom = m;
+      offsetXDrag = mx - m.anchor.x;
+      offsetYDrag = my - m.anchor.y;
+      return;
+    }
+  }
+}
+
+function mouseDragged() {
+  if (draggingMushroom) {
+    const sx = width / DESIGN_W;
+    const sy = height / DESIGN_H;
+    const s  = min(sx, sy);
+    const offsetX = (width - DESIGN_W * s) / 2;
+    const offsetY = (height - DESIGN_H * s) / 2;
+
+    const mx = (mouseX - offsetX) / s;
+    const my = (mouseY - offsetY) / s;
+
+    // If it's a big mushroom
+    if (draggingMushroom.x !== undefined) {
+      draggingMushroom.x = mx - offsetXDrag;
+      draggingMushroom.y = my - offsetYDrag;
+    }
+    // If it's a small mushroom
+    else if (draggingMushroom.anchor) {
+      draggingMushroom.anchor.x = mx - offsetXDrag;
+      draggingMushroom.anchor.y = my - offsetYDrag;
+    }
+  }
+}
+
+function mouseReleased() {
+  draggingMushroom = null;
+}
+
+// Helper functions (buildBackground, makeMushroomFromLayout)
 
 // Function to build the background
 // Reference: https://editor.p5js.org/yetiblue/sketches/2LuMOM0bl
@@ -138,6 +288,30 @@ function drawTriangle(g, a, b, c) {
   g.vertex(c.x, c.y);
   g.endShape(CLOSE);
 }
+
+// Modularise each mushroom to helper functions
+
+// Large mushroom
+function drawLargeMushroom() {
+  push();
+  translate(largeMushroom.x, largeMushroom.y);
+  rotate(radians(largeMushroom.rot));
+  scale(largeMushroom.scale);
+  drawStemUniform();
+  drawCapReplica(0, -650, 880, 360);
+  pop();
+}
+
+// function drawSmallMushrooms(m) {
+//   push();
+//   translate(m.anchor.x, m.anchor.y);   // use anchor for position
+//   scale(m.pose.scale || 1);            // use pose.scale
+//   rotate(radians(m.pose.rot || 0));    // optional rotation
+//   m.draw();                            // call mushroom’s draw method
+//   pop();
+// }
+
+// Layout functions
 
 // For small mushrooms
 // Pattern / Cap / Stem / Base / Mushroom systems
@@ -2500,16 +2674,3 @@ function drawStemUniform() {
   }
   ctx.restore();
 }
-
-// Function to create responsive design
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
-
-  // Rebuilding the background for responsive design
-  buildBackground();
-
-  redraw();
-}
-
-
-
