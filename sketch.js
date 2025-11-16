@@ -5,10 +5,64 @@ let mushrooms = [];
 const DESIGN_W = 1200;  // 设计稿宽度
 const DESIGN_H = 1000;  // 设计稿高度
 
-// ================== 背景（来源：第一份代码） ==================
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(2);
+  colorMode(HSB, 360, 100, 100, 100);
+  noLoop();
+
+  buildBackground();
+
+  mushrooms = [];
+  for (const layout of SCENE_LAYOUT) {
+    const m = makeMushroomFromLayout(layout);
+    if (m) mushrooms.push(m);
+  }
+}
+
+function draw() {
+  
+  // 0. Show background buffer
+  image(bg, 0, 0, width, height);
+
+  // 1. Scaling the mushrooms
+  const sx = width  / DESIGN_W;
+  const sy = height / DESIGN_H;
+  const s  = min(sx, sy);  // Proportional scaling
+
+  // Centering the design
+  const offsetX = (width  - DESIGN_W * s) / 2;
+  const offsetY = (height - DESIGN_H * s) / 2;
+
+  // 2. Drawing the mushrooms (scaled)
+  push();
+  translate(offsetX, offsetY);
+  scale(s);
+
+  // 2.1 Large mushroom
+  push();
+  translate(DESIGN_W * 0.35, DESIGN_H * 0.75);
+  rotate(radians(-7));
+  scale(0.7);
+  drawStemUniform();
+  drawCapReplica(0, -650, 880, 360);
+  pop();
+
+  // 2.2 Small mushrooms
+  for (const m of mushrooms) {
+    m.draw();
+  }
+
+  pop();
+}
+
+// Function to build the background
+// Reference: https://editor.p5js.org/yetiblue/sketches/2LuMOM0bl
+// This triangular pattern was the basis for the background code
 
 function buildBackground() {
   
+  // Setting max height and width for responsive design
   maxWidth = windowWidth;
   maxHeight = windowHeight;
 
@@ -52,41 +106,27 @@ function buildBackground() {
   }
 }
 
-// 画背景用的三角形
+// Triangle drawing function for the background
+// g is the graphics buffer
 function drawTriangle(g, a, b, c) {
+
+  // Using bezier curves to draw filled triangles to create varying thickness of triangle edges
   g.fill("#BC7653");
   g.stroke("#BC7653");
-  g.bezier(
-    a.x,
-    a.y,
-    (a.x + b.x) / 2 + random(-2, 2),
-    (a.y + b.y) / 2 + random(-5, 5),
-    (a.x + b.x) / 2 + random(-2, 2),
-    (a.y + b.y) / 2 + random(-5, 5),
-    b.x,
-    b.y
-  );
-  g.bezier(
-    b.x,
-    b.y,
-    (b.x + c.x) / 2 + random(-2, 2),
-    (b.y + c.y) / 2 + random(-5, 5),
-    (b.x + c.x) / 2 + random(-2, 2),
-    (b.y + c.y) / 2 + random(-5, 5),
-    c.x,
-    c.y
-  );
-  g.bezier(
-    c.x,
-    c.y,
-    (c.x + a.x) / 2 + random(-2, 2),
-    (c.y + a.y) / 2 + random(-5, 5),
-    (c.x + a.x) / 2 + random(-2, 2),
-    (c.y + a.y) / 2 + random(-5, 5),
-    a.x,
-    a.y
-  );
+  g.bezier(a.x, a.y,
+    (a.x + b.x) / 2 + random(-2, 2), (a.y + b.y) / 2 + random(-5, 5),
+    (a.x + b.x) / 2 + random(-2, 2), (a.y + b.y) / 2 + random(-5, 5),
+    b.x, b.y);
+  g.bezier(b.x, b.y,
+    (b.x + c.x) / 2 + random(-2, 2), (b.y + c.y) / 2 + random(-5, 5),
+    (b.x + c.x) / 2 + random(-2, 2), (b.y + c.y) / 2 + random(-5, 5),
+    c.x, c.y);
+  g.bezier(c.x, c.y,
+    (c.x + a.x) / 2 + random(-2, 2), (c.y + a.y) / 2 + random(-5, 5),
+    (c.x + a.x) / 2 + random(-2, 2), (c.y + a.y) / 2 + random(-5, 5),
+    a.x, a.y);
 
+  // Then draw triangles on top to bring back the outlined-triangle look
   g.fill("#070C08");
   g.stroke("#BC7653");
   g.beginShape();
@@ -96,7 +136,8 @@ function drawTriangle(g, a, b, c) {
   g.endShape(CLOSE);
 }
 
-// ================== Pattern / Cap / Stem / Base / Mushroom 系统 ==================
+// For small mushrooms
+// Pattern / Cap / Stem / Base / Mushroom systems
 
 // Cap Pattern
 const CAP_PATTERN = {
@@ -133,7 +174,7 @@ function withClip(areaPathFn, painterFn) {
   ctx.restore();
 }
 
-// 计算多边形外接矩形
+// Calculate the bounding rectange of a polygon
 function boundingBox(poly) {
   let minx = Infinity,
     miny = Infinity,
@@ -193,7 +234,7 @@ const PatternPainter = {
     }
   },
 
-  // ---------- Cap pattern: circles (multi / mono) ----------
+  // Cap pattern: circles (multi / mono)
   circles(deps, cfg) {
     const poly = deps.poly;
     const rx = deps.rx || (deps.w ? deps.w * 0.5 : 40);
@@ -256,7 +297,7 @@ const PatternPainter = {
     }
   },
 
-  // ---------- Cap pattern: nested ----------
+  // Cap pattern: nested
   nested(deps, cfg = {}) {
     const poly = deps.poly;
     const rx = deps.rx || (deps.w ? deps.w * 0.5 : 40);
@@ -319,7 +360,7 @@ const PatternPainter = {
     }
   },
 
-  // ---------- Cap pattern: noisy rings ----------
+  // Cap pattern: noisy rings
   noisyRings(deps, cfg = {}) {
     const topPts = deps.topPts || [];
     if (!topPts.length) return;
@@ -419,7 +460,7 @@ const PatternPainter = {
     }
   },
 
-  // ---------- Base patterns: tracks ----------
+  // Base patterns: tracks
   baseTracks(deps, cfg = {}) {
     const poly = deps.poly;
     const bb = boundingBox(poly);
@@ -502,7 +543,7 @@ const PatternPainter = {
     pop();
   },
 
-  // ---------- Stem pattern: Voronoi ----------
+  // Stem pattern: Voronoi
   stemVoronoi(deps, opt = {}) {
     const poly = deps.poly;
     if (!poly || !poly.length) return;
@@ -579,7 +620,7 @@ const PatternPainter = {
     }
   },
 
-  // ---------- Stem pattern: Dot Tracks ----------
+  // Stem pattern: Dot Tracks
   stemDotTracks(deps, opt = {}) {
     const poly = deps.poly;
     if (!poly || !poly.length) return;
@@ -638,7 +679,7 @@ const PatternPainter = {
     }
   },
 
-  // ---------- Stem pattern: Dot Gradient ----------
+  // Stem pattern: Dot Gradient
   stemDotGradient(deps, opt = {}) {
     const poly = deps.poly;
     if (!poly || !poly.length) return;
@@ -708,7 +749,7 @@ const PatternPainter = {
   }
 };
 
-// ---------- Cap class ----------
+// Cap class
 class Cap {
   constructor(spec) {
     this.visible = spec.visible != null ? spec.visible : true;
@@ -1113,7 +1154,7 @@ class Stem {
   }
 }
 
-// ---------- BasePart class ----------
+// BasePart class
 class BasePart {
   constructor(spec) {
     this.visible = spec.visible != null ? spec.visible : false;
@@ -1309,7 +1350,7 @@ class BasePart {
   }
 }
 
-// ---------- Mushroom class ----------
+// Mushroom class
 class Mushroom {
   constructor(spec) {
     this.id = spec.id || "m";
@@ -1393,21 +1434,20 @@ class Mushroom {
   }
 }
 
-// ---------- Scene class（目前可以不用，但保留） ----------
-class Scene {
-  constructor() {
-    this.items = [];
-  }
-  add(m) {
-    this.items.push(m);
-  }
-  draw() {
-    for (const m of this.items) m.draw();
-  }
-}
+// Scene class（not needed for now)
+// class Scene {
+//   constructor() {
+//     this.items = [];
+//   }
+//   add(m) {
+//     this.items.push(m);
+//   }
+//   draw() {
+//     for (const m of this.items) m.draw();
+//   }
+// }
 
-// ---------- TYPE_LIBRARY / SCENE_LAYOUT / makeMushroomFromLayout ----------
-
+// TYPE_LIBRARY / SCENE_LAYOUT / makeMushroomFromLayout
 // Type library
 const TYPE_LIBRARY = {
   default: {
@@ -1507,7 +1547,7 @@ const TYPE_LIBRARY = {
   }
 };
 
-// 场景布局（你原来的 SCENE_LAYOUT）
+// scene layout
 const SCENE_LAYOUT = [
   {
     id: "m_greenL",
@@ -2004,7 +2044,7 @@ const SCENE_LAYOUT = [
   }
 ];
 
-// 工厂函数
+// Function that builds a new mushroom object based on a given layout specification
 function makeMushroomFromLayout(layout) {
   const typeSpec = TYPE_LIBRARY[layout.type];
   if (!typeSpec) {
@@ -2054,9 +2094,9 @@ function makeMushroomFromLayout(layout) {
   });
 }
 
-// ==================== 大蘑菇：伞盖 & 伞柄（你的原版） ====================
+// Functions for drawing the large mushroom
 
-/* ================== 伞盖：更像原画的大蘑菇 ================== */
+// Function for drawing the cap
 function drawCapReplica(cx, cy, W, H) {
   const rimThk = 54;
   const topW = W * 1.05,
@@ -2313,7 +2353,7 @@ function drawCapReplica(cx, cy, W, H) {
   ctx.restore();
 }
 
-/* ====================== 伞柄 ====================== */
+// Function for drawing the stem
 function drawStemUniform() {
   const H = 680,
     topW = 120,
@@ -2458,63 +2498,13 @@ function drawStemUniform() {
   ctx.restore();
 }
 
-// ================== setup / draw ==================
-
-function setup() {
-  createCanvas(windowWidth, windowHeight);
-  pixelDensity(2);
-  colorMode(HSB, 360, 100, 100, 100);
-  noLoop();
-
-  buildBackground();
-
-  mushrooms = [];
-  for (const layout of SCENE_LAYOUT) {
-    const m = makeMushroomFromLayout(layout);
-    if (m) mushrooms.push(m);
-  }
-}
-
-
-
-function draw() {
-  // ========= 0. 背景永远铺满整个窗口 =========
-  image(bg, 0, 0, width, height);  // ✅ 关键：不受后面的 scale 影响
-
-  // ========= 1. 计算蘑菇场景的缩放 =========
-  const sx = width  / DESIGN_W;
-  const sy = height / DESIGN_H;
-  const s  = min(sx, sy);  // 等比缩放
-
-  // 为了让 1200×1000 的“场景”居中
-  const offsetX = (width  - DESIGN_W * s) / 2;
-  const offsetY = (height - DESIGN_H * s) / 2;
-
-  // ========= 2. 在缩放后的坐标系里画蘑菇 =========
-  push();
-  translate(offsetX, offsetY);
-  scale(s);
-
-  // 2.1 大蘑菇（用设计稿坐标）
-  push();
-  translate(DESIGN_W * 0.35, DESIGN_H * 0.75);
-  rotate(radians(-7));
-  scale(0.7);
-  drawStemUniform();
-  drawCapReplica(0, -650, 880, 360);
-  pop();
-
-  // 2.2 小蘑菇（你原来的 SCENE_LAYOUT 坐标）
-  for (const m of mushrooms) {
-    m.draw();
-  }
-
-  pop();
-}
-
+// Function to create responsive design
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  buildBackground(); // 重新做一次满屏背景
+
+  // Rebuilding the background for responsive design
+  buildBackground();
+
   redraw();
 }
 
