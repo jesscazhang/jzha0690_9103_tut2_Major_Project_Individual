@@ -15,6 +15,9 @@ const DESIGN_H = 1000;
 let draggingMushroom = null;
 let offsetXDrag = 0, offsetYDrag = 0;
 
+// Gravity flag
+let gravityOn = false;
+
 // Large mushroom dimensions (for drawing and hit-test detection)
 const capWidth = 880;
 const capHeight = 360;
@@ -32,16 +35,36 @@ function setup() {
     x: DESIGN_W / 2.7,
     y: DESIGN_H / 1.2,
     scale: 0.7,
-    rot: -7
+    rot: -7,
+    speedY: 0
   });
 
   // Build small mushrooms directly from SCENE_LAYOUT
+  // Store small mushrooms in the design space
   pixelDensity(2);
   colorMode(HSB, 360, 100, 100, 100);
   smallMushrooms = [];
   for (const layout of SCENE_LAYOUT) {
     const m = makeMushroomFromLayout(layout);
-    if (m) smallMushrooms.push(m);
+    //if (m) smallMushrooms.push(m);
+    if (m) {
+    // Ensure anchor is in design space
+    m.anchor = {
+      x: layout.anchor.x,   // already design-space coordinates
+      y: layout.anchor.y
+    };
+
+    // Copy pose (scale/rotation) from layout
+    m.pose = {
+      scale: layout.pose?.scale || 1,
+      rot: layout.pose?.rot || 0
+    };
+
+    // Add velocity for gravity
+    m.speedY = 0;
+
+    smallMushrooms.push(m);
+    }
   }
 }
 
@@ -68,9 +91,9 @@ function draw() {
   // 2.1 Large mushroom
   for (let m of mushrooms) { 
     push();
-    translate(m.x * s, m.y * s);
+    translate(m.x, m.y);
     // Size scales with the screen
-    scale(m.scale * s);
+    scale(m.scale);
     rotate(radians(m.rot));                            
     // Draw stem
     drawStemUniform();
@@ -97,6 +120,44 @@ function draw() {
     m.draw();
   }
   pop();
+
+  // Toggle gravity
+
+  if (gravityOn && !draggingMushroom) {
+    const gravity = 0.5; // acceleration per frame
+
+    // Big mushrooms
+    for (let m of mushrooms) {
+      m.speedY += gravity;
+      m.y += m.speedY;
+
+      //const stemHeight = 680;
+      //const s = min(width, height) / 1200 * m.scale;
+      const bottomY = windowHeight + 100;
+
+      if (m.y > bottomY) {
+        m.y = bottomY;
+        m.speedY = 0;
+      }
+    }
+
+    // Small mushrooms
+    for (let m of smallMushrooms) {
+      m.speedY += gravity;
+      m.anchor.y += m.speedY;
+
+      //const stemHeight = 680;
+      //const s = min(width, height) / 1200 * m.scale;
+      // const DESIGN_H = height - stemHeight * s / 4;
+      const DESIGN_H = windowHeight - 100;
+
+
+      if (m.anchor.y > DESIGN_H) {
+        m.anchor.y = DESIGN_H;
+        m.speedY = 0;
+      }
+    }
+  }
 }
 
 // User input functions
@@ -132,7 +193,7 @@ function mousePressed() {
 
     // Stem rectangle bounds
     const stemCx = m.x;
-    const stemCy = m.y - (stemHeight * 0.5) * scale;
+    const stemCy = m.y - (stemHeight) * scale;
     const stemW  = capWidth * 0.3 * scale;
     const stemH  = stemHeight * scale;
 
@@ -140,7 +201,7 @@ function mousePressed() {
                     my >= stemCy - stemH/2 && my <= stemCy + stemH/2);
 
     // Cap rectangle bounds
-    const capCx = m.x * scale;
+    const capCx = m.x;
     const capCy = m.y - 750 * scale;
     const capW  = capWidth * scale;
     const capH  = (capHeight/1.5) * scale;
@@ -206,6 +267,13 @@ function mouseDragged() {
 
 function mouseReleased() {
   draggingMushroom = null;
+}
+
+// Function to toggle gravity if 'g' or 'G' is pressed
+function keyPressed() {
+  if (key === 'g' || key === 'G') {
+    gravityOn = !gravityOn;
+  }
 }
 
 // Helper functions (buildBackground, makeMushroomFromLayout)
