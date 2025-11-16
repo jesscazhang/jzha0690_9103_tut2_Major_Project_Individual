@@ -1,9 +1,13 @@
-// ================== 全局变量 ==================
+// Global variables
 let maxWidth, maxHeight;
-let bg;           // 背景用的 graphics buffer
 let mushrooms = [];
-const DESIGN_W = 1200;  // 设计稿宽度
-const DESIGN_H = 1000;  // 设计稿高度
+
+// Defining the initial canvas size and width
+const DESIGN_W = 1200;
+const DESIGN_H = 1000; 
+
+// Graphics buffer for the background
+let bg;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -59,7 +63,6 @@ function draw() {
 // Function to build the background
 // Reference: https://editor.p5js.org/yetiblue/sketches/2LuMOM0bl
 // This triangular pattern was the basis for the background code
-
 function buildBackground() {
   
   // Setting max height and width for responsive design
