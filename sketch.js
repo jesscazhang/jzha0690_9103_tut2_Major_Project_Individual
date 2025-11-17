@@ -338,7 +338,8 @@ function keyPressed() {
     gravityOn = !gravityOn;
     if (gravityOn) {
       floatOn = false;
-      // Speed up 1.5 / begin at 1 sec
+      // Begin at 1 sec
+      // Parameters: play(startTime, rate, amp, cueStart, duration) from Copilot
       gravitySound.play(0, 1, 1, 0);
     } else {
       // Reset velocity so they stop moving
@@ -872,7 +873,7 @@ const PatternPainter = {
   },
 
   // Stem pattern: Voronoi
-  //Used p5.voronoi library to generate Voronoi pattern
+  // Used p5.voronoi library to generate Voronoi pattern
   stemVoronoi(deps, opt = {}) {
     const poly = deps.poly;
     if (!poly || !poly.length) return;
@@ -887,6 +888,7 @@ const PatternPainter = {
     const satRange = opt.satRange ?? 10;
     const briRange = opt.briRange ?? 10;
 
+    // change base color with different formats into p5.Color
     function toP5Color(c, fallback) {
       if (!c) return fallback;
       if (c instanceof p5.Color) return c;
@@ -896,6 +898,7 @@ const PatternPainter = {
       return fallback;
     }
 
+    //set base color
     let baseCol = toP5Color(
       opt.baseColor,
       deps.accent1 || color(110, 60, 70)
@@ -910,11 +913,13 @@ const PatternPainter = {
     );
     let edgeWeight = opt.edgeWeight ?? 1.5;
 
-    voronoiClearSites();
-    for (let i = 0; i < siteCount; i++) {
+    // Generate pattern
+
+    voronoiClearSites(); // Clear previous sites
+    for (let i = 0; i < siteCount; i++) { // Add random sites
       voronoiSite(random(w), random(h));
     }
-    voronoi(w, h, true);
+    voronoi(w, h, true); //Generate Voronoi diagram segments
 
     const diagram = voronoiGetDiagram();
     if (!diagram || !diagram.cells) return;
@@ -925,8 +930,8 @@ const PatternPainter = {
     for (let c of diagram.cells) {
       if (!c.halfedges || c.halfedges.length === 0) continue;
 
-      const site = c.site;
-      const n = noise(site.x * noiseFreq, site.y * noiseFreq);
+      const site = c.site; // center point of the cell
+      const n = noise(site.x * noiseFreq, site.y * noiseFreq); // noise value to vary color slightly
       const s = constrain(
         baseS + map(n, 0, 1, -satRange, satRange),
         0,
@@ -945,11 +950,12 @@ const PatternPainter = {
         const v = he.getStartpoint();
         vertex(bb.minx + v.x, bb.miny + v.y);
       }
-      endShape(CLOSE);
+      endShape(CLOSE); // close the shape
     }
   },
 
   // Stem pattern: Dot Tracks
+  // Use random instead of noise for jitter
   stemDotTracks(deps, opt = {}) {
     const poly = deps.poly;
     if (!poly || !poly.length) return;
@@ -988,17 +994,18 @@ const PatternPainter = {
     noStroke();
     fill(dc);
 
-    const stepY = height / (rows + 1);
+    const stepY = height / (rows + 1); // rows +1 to leave some gap at top and bottom
 
-    for (let k = 0; k < trackCount; k++) {
+    for (let k = 0; k < trackCount; k++) { // from left to right
       const t = (k + 0.5) / trackCount;
       const x = lerp(bb.minx + marginX, bb.maxx - marginX, t);
 
+      // dots in the center are larger, dots near the edges are smaller
       const centerT = 0.5;
       const dist = abs(t - centerT) / centerT;
       const scale = lerp(1.0, edgeScale, dist);
 
-      for (let i = 1; i <= rows; i++) {
+      for (let i = 1; i <= rows; i++) { // from top to bottom
         const yBase = bb.miny + stepY * i;
         const y = yBase + random(-jitterY, jitterY);
 
@@ -1015,14 +1022,14 @@ const PatternPainter = {
 
     const bb = boundingBox(poly);
     const width = bb.maxx - bb.minx;
-    const height = bb.maxy - bb.miny;
+    // const height = bb.maxy - bb.miny;
 
-    const maxCount = opt.maxCount != null ? opt.maxCount : 200;
-    const tries = opt.tries != null ? opt.tries : 1200;
-    const minR = opt.minR != null ? opt.minR : width * 0.02;
-    const maxR = opt.maxR != null ? opt.maxR : width * 0.06;
-    const jitterScale = opt.jitterScale != null ? opt.jitterScale : 0.15;
-    const gap = opt.gap != null ? opt.gap : minR * 0.2;
+    const maxCount = opt.maxCount != null ? opt.maxCount : 200; // maximum number of dots to place
+    const tries = opt.tries != null ? opt.tries : 1200; // prevent infinite loop
+    const minR = opt.minR != null ? opt.minR : width * 0.02; // minimum radius of dots
+    const maxR = opt.maxR != null ? opt.maxR : width * 0.06; // maximum radius of dots
+    const jitterScale = opt.jitterScale != null ? opt.jitterScale : 0.15; // scale of radius jitter
+    const gap = opt.gap != null ? opt.gap : minR * 0.2; // minimum gap between dots
 
     let rawCol = opt.dotColor || deps.accent1 || {
       h: 40,
@@ -1046,19 +1053,20 @@ const PatternPainter = {
     noStroke();
     fill(dc);
 
-    let placed = [];
-    let count = 0;
+    let placed = []; // placed dots
+    let count = 0; // count of placed dots
 
     for (let i = 0; i < tries && count < maxCount; i++) {
       const x = random(bb.minx, bb.maxx);
       const y = random(bb.miny, bb.maxy);
 
-      const t = map(y, bb.miny, bb.maxy, 0, 1);
-      let rBase = lerp(minR, maxR, t);
+      const t = map(y, bb.miny, bb.maxy, 0, 1); // mapping y to [0,1] for radius lerp, if y is at top, t=0, if y is at bottom, t=1
+      let rBase = lerp(minR, maxR, t); // interpolated base radius between [minR, maxR], top smaller, bottom larger
 
-      rBase *= 1 + random(-jitterScale, jitterScale);
-      const r = max(1, rBase);
+      rBase *= 1 + random(-jitterScale, jitterScale); // Use random to add some jitter to radius
+      const r = max(1, rBase); // ensure radius is at least 1 to avoid too small dots
 
+      // Check for overlaps with existing dots
       let ok = true;
       for (const e of placed) {
         if (
@@ -1289,7 +1297,7 @@ class Cap {
   }
 }
 
-// ---------- Stem class ----------
+// Stem class
 class Stem {
   constructor(spec) {
     this.visible = spec.visible != null ? spec.visible : true;
@@ -1763,20 +1771,8 @@ class Mushroom {
   }
 }
 
-// Scene class（not needed for now)
-// class Scene {
-//   constructor() {
-//     this.items = [];
-//   }
-//   add(m) {
-//     this.items.push(m);
-//   }
-//   draw() {
-//     for (const m of this.items) m.draw();
-//   }
-// }
-
 // TYPE_LIBRARY / SCENE_LAYOUT / makeMushroomFromLayout
+
 // Type library
 const TYPE_LIBRARY = {
   default: {
@@ -1876,7 +1872,7 @@ const TYPE_LIBRARY = {
   }
 };
 
-// scene layout
+// Scene layout for small mushrooms
 const SCENE_LAYOUT = [
   {
     id: "m_greenL",
@@ -2374,6 +2370,7 @@ const SCENE_LAYOUT = [
 ];
 
 // Function that builds a new mushroom object based on a given layout specification
+// Generated by ChatGPT 5.0 
 function makeMushroomFromLayout(layout) {
   const typeSpec = TYPE_LIBRARY[layout.type];
   if (!typeSpec) {
@@ -2423,7 +2420,7 @@ function makeMushroomFromLayout(layout) {
   });
 }
 
-// Functions for drawing the large mushroom
+// Functions for drawing the large mushroom (cap and stem)
 
 // Function for drawing the cap
 function drawCapReplica(cx, cy, W, H) {
