@@ -1,6 +1,9 @@
+// AI acknowledgement: Copilot was used to refine ideas and debug code
+
 // Global variables
 let maxWidth, maxHeight;
-// let mushroomX, mushroomY;
+
+// Arrays to store the mushrooms
 let bigMushroom = [];
 let smallMushrooms = [];
 
@@ -11,14 +14,14 @@ let bg;
 const DESIGN_W = 1200;
 const DESIGN_H = 1000; 
 
-// Variables for user input
+// Variables for user input logic
 let draggingMushroom = null;
 let offsetXDrag = 0, offsetYDrag = 0;
 
-// Gravity flag
+// Gravity flag for user input logic
 let gravityOn = false;
 
-// Float flag
+// Float flag for user input logic
 let floatOn = false;
 
 // Large mushroom dimensions (for drawing and hit-test detection)
@@ -67,13 +70,13 @@ function setup() {
   smallMushrooms = [];
   for (const layout of SCENE_LAYOUT) {
     const m = makeMushroomFromLayout(layout);
-    //if (m) smallMushrooms.push(m);
     if (m) {
-    // Ensure anchor is in design space
-    m.anchor = {
-      x: layout.anchor.x,   // already design-space coordinates
-      y: layout.anchor.y
-    };
+
+    // anchor is already in the design space
+    // m.anchor = {
+    //   x: layout.anchor.x,
+    //   y: layout.anchor.y
+    // };
 
     // Copy pose (scale/rotation) from layout
     m.pose = {
@@ -91,10 +94,10 @@ function setup() {
 
 function draw() {
   
-  // 0. Show background buffer
+  // Show background buffer
   image(bg, 0, 0);
 
-  // 1. Scaling the mushrooms
+  // Scaling the mushrooms
   const sx = width  / DESIGN_W;
   const sy = height / DESIGN_H;
   // Proportional scaling
@@ -104,12 +107,12 @@ function draw() {
   const offsetX = (width  - DESIGN_W * s) / 2;
   const offsetY = (height - DESIGN_H * s) / 2;
 
-  // 2. Drawing the mushrooms (scaled)
+  // Drawing the mushrooms (scaled)
   push();
   translate(offsetX, offsetY);
   scale(s);
 
-  // 2.1 Large mushroom
+  // Large mushroom
   for (let m of bigMushroom) { 
     push();
     translate(m.x, m.y);
@@ -121,7 +124,7 @@ function draw() {
     // Draw mushroom top (cx, cy, W, H)                
     drawCapReplica(0, -650, capWidth, capHeight);
 
-    // // --- Debug rectangles ---
+    // // Debug - draw rectangles to show boundary for hit-test in mousePressed
     // rectMode(CENTER);
     // noFill();
 
@@ -136,7 +139,7 @@ function draw() {
     pop();
   }
 
-  // 2.2 Small mushrooms
+  // Small mushrooms
   for (const m of smallMushrooms) {
     m.draw();
   }
@@ -185,34 +188,34 @@ function draw() {
   // Mushrooms will float to the top if toggled
 
   if (floatOn && !draggingMushroom) {
-  const lift = 0.2; // upward acceleration per frame
+    const lift = 0.2; // upward acceleration per frame
 
-  // Big mushroom
-  for (let m of bigMushroom) {
-    // Accelerate up
-    m.speedY -= lift;
-    m.y += m.speedY;
+    // Big mushroom
+    for (let m of bigMushroom) {
+      // Accelerate up
+      m.speedY -= lift;
+      m.y += m.speedY;
 
-    // Top of window
-    const topY = 500;
-    if (m.y < topY) {
-      m.y = topY;
-      m.speedY = 0;
+      // Top of window
+      const topY = 500;
+      if (m.y < topY) {
+        m.y = topY;
+        m.speedY = 0;
+      }
+    }
+
+    // Small mushrooms
+    for (let m of smallMushrooms) {
+      m.speedY -= lift;
+      m.anchor.y += m.speedY;
+
+      const topY = 0;
+      if (m.anchor.y < topY) {
+        m.anchor.y = topY;
+        m.speedY = 0;
+      }
     }
   }
-
-  // Small mushrooms
-  for (let m of smallMushrooms) {
-    m.speedY -= lift;
-    m.anchor.y += m.speedY;
-
-    const topY = 0;
-    if (m.anchor.y < topY) {
-      m.anchor.y = topY;
-      m.speedY = 0;
-    }
-  }
-}
 }
 
 // User input functions
@@ -439,34 +442,17 @@ function drawTriangle(g, a, b, c) {
   g.endShape(CLOSE);
 }
 
-// Modularise each mushroom to helper functions
-
-// Large mushroom
-function drawLargeMushroom() {
-  push();
-  translate(largeMushroom.x, largeMushroom.y);
-  rotate(radians(largeMushroom.rot));
-  scale(largeMushroom.scale);
-  drawStemUniform();
-  drawCapReplica(0, -650, 880, 360);
-  pop();
-}
-
-// function drawSmallMushrooms(m) {
-//   push();
-//   translate(m.anchor.x, m.anchor.y);   // use anchor for position
-//   scale(m.pose.scale || 1);            // use pose.scale
-//   rotate(radians(m.pose.rot || 0));    // optional rotation
-//   m.draw();                            // call mushroom’s draw method
-//   pop();
-// }
-
 // Layout functions
 
 // For small mushrooms
 // Pattern / Cap / Stem / Base / Mushroom systems
 
 // Cap Pattern
+// four types of cap patterns:
+// circles_multi: multiple colored circles
+// circles_mono: single color circles
+// noisy_rings: concentric rings with noise
+// nested: nested circles
 const CAP_PATTERN = {
   NONE: "none",
   CIRCLES_MULTI: "circles_multi",
@@ -476,6 +462,10 @@ const CAP_PATTERN = {
 };
 
 // Stem Pattern
+// three types of stem patterns:
+// voronoi_cells: Voronoi cell pattern
+// dot_tracks: circles arranged in vertical dot tracks
+// dot_gradient: circles with size-based gradient
 const STEM_PATTERN = {
   NONE: "none",
   VORONOI: "voronoi_cells",
@@ -484,13 +474,16 @@ const STEM_PATTERN = {
 };
 
 // Base Pattern
+// two types of base patterns:
+// tracks_mono: mono colored tracks
+// tracks_alt: alternating colored tracks
 const BASE_PART_PATTERN = {
   NONE: "none",
   TRACKS_MONO: "tracks_mono",
   TRACKS_ALT: "tracks_alt"
 };
 
-// Clip Tool
+// Clip Tool: Only show painterFn’s drawing within areaPathFn area
 function withClip(areaPathFn, painterFn) {
   const ctx = drawingContext;
   ctx.save();
@@ -501,7 +494,8 @@ function withClip(areaPathFn, painterFn) {
   ctx.restore();
 }
 
-// Calculate the bounding rectange of a polygon
+// Polygon bounding box: find minx, miny, maxx, maxy of polygon points
+// When we need to generate random points within a polygon, we first find its bounding box to limit the area for random sampling
 function boundingBox(poly) {
   let minx = Infinity,
     miny = Infinity,
@@ -517,8 +511,11 @@ function boundingBox(poly) {
 }
 
 // PatternPainter
+// Paint different patterns based on type
 const PatternPainter = {
   paint(type, deps, opt = {}) {
+    
+    // Early return for NONE type
     if (
       !type ||
       type === CAP_PATTERN.NONE ||
@@ -562,6 +559,7 @@ const PatternPainter = {
   },
 
   // Cap pattern: circles (multi / mono)
+  // Generated by chatgpt5.0 with modifications
   circles(deps, cfg) {
     const poly = deps.poly;
     const rx = deps.rx || (deps.w ? deps.w * 0.5 : 40);
@@ -571,6 +569,7 @@ const PatternPainter = {
     let accent1 = accent1_default;
     let accent2 = accent2_default;
 
+    // Override colors if provided in cfg
     if (cfg.accent1) {
       accent1 = color(
         cfg.accent1.h,
@@ -588,20 +587,21 @@ const PatternPainter = {
       );
     }
 
-    let placed = [];
-    let count = 0;
-    const bb = boundingBox(poly);
+    let placed = []; // Placed circles that successfully drawn
+    let count = 0; // Count of placed circles
+    const bb = boundingBox(poly); // bounding box of polygon
 
-    const minR = cfg.minR != null ? cfg.minR : rx * 0.03;
-    const maxR = cfg.maxR != null ? cfg.maxR : rx * 0.08;
-    const tries = cfg.tries != null ? cfg.tries : 1200;
-    const maxCount = cfg.maxCount != null ? cfg.maxCount : 100;
-    const gap = cfg.gap != null ? cfg.gap : rx * 0.03;
+    const minR = cfg.minR != null ? cfg.minR : rx * 0.03; // min radius of circles
+    const maxR = cfg.maxR != null ? cfg.maxR : rx * 0.08; // max radius of circles
+    const tries = cfg.tries != null ? cfg.tries : 1200; // prevent Infinite loop
+    const maxCount = cfg.maxCount != null ? cfg.maxCount : 100; // max number of circles to place
+    const gap = cfg.gap != null ? cfg.gap : rx * 0.03; // gap between circles
 
     for (let i = 0; i < tries && count < maxCount; i++) {
       const c = createVector(random(bb.minx, bb.maxx), random(bb.miny, bb.maxy));
       const r = random(minR, maxR);
 
+      // Check for overlaps with existing circles
       let ok = true;
       for (let e of placed) {
         if (p5.Vector.dist(c, e.c) < r + e.r + gap) {
@@ -611,6 +611,7 @@ const PatternPainter = {
       }
       if (!ok) continue;
 
+      // Draw the circle
       noStroke();
       if (cfg.mono) {
         fill(accent1);
@@ -649,7 +650,7 @@ const PatternPainter = {
       );
     }
 
-    let placed = [];
+    let placed = []; // Placed circles that successfully drawn
     let count = 0;
     const bb = boundingBox(poly);
 
@@ -871,6 +872,7 @@ const PatternPainter = {
   },
 
   // Stem pattern: Voronoi
+  //Used p5.voronoi library to generate Voronoi pattern
   stemVoronoi(deps, opt = {}) {
     const poly = deps.poly;
     if (!poly || !poly.length) return;
@@ -880,8 +882,8 @@ const PatternPainter = {
     const h = bb.maxy - bb.miny;
     if (w <= 0 || h <= 0) return;
 
-    const siteCount = opt.siteCount ?? 80;
-    const noiseFreq = opt.noiseFreq ?? 0.02;
+    const siteCount = opt.siteCount ?? 80; // number of Voronoi sites
+    const noiseFreq = opt.noiseFreq ?? 0.02; // frequency for noise function
     const satRange = opt.satRange ?? 10;
     const briRange = opt.briRange ?? 10;
 

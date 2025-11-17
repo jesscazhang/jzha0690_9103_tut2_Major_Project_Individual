@@ -20,7 +20,7 @@ From the image that my team and I created, we decided on unique methods to anima
 - Jess (interaction): Allowing the user to move the mushrooms wherever they would like in the window, as well as making the mushrooms fall to the bottom and also float to the top of the window.
 - Jen (audio): Changing the size and scale of the mushrooms and patterns, as well as the colour of the triangular background based on the frequency of the audio
 - Viko (time): Background lines drawn along paths, and mushrooms bouncing vertically while swaying from side to side.
-- Fangxia (perlin noise):
+- Fangxia (perlin noise): Added animation on all mushroom patterns, and when someone clicks a mushroom, it starts pulsing - clicking it again will stop the animation.
 
 ### Inspiration and references
 
