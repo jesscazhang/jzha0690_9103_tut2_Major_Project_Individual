@@ -32,10 +32,12 @@ let gravitySound;
 let releaseSound;
 
 // Load in sound effects
-// References:
+
+// References
 // Glitter: https://www.youtube.com/watch?v=IZWL2gALgvM
 // Thud: https://www.youtube.com/watch?v=dz6Lp_PyX_Q
 // Pop: https://www.youtube.com/watch?v=QvghQOO3K-I
+
 function preload() {
   floatSound = loadSound('assets/Glitter.mp3');
   gravitySound = loadSound('assets/Thud.mp3');
